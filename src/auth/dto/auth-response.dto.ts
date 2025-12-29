@@ -10,8 +10,6 @@ export class AuthResponseDto {
   @ApiProperty()
   user: {
     id: string;
-    email: string;
-    name: string;
     phone?: string;
     avatar?: string;
     isPremium: boolean;

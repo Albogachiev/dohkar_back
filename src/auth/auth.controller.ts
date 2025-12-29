@@ -8,6 +8,7 @@ import {
   Res,
   HttpCode,
   HttpStatus,
+  Ip,
 } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from "@nestjs/swagger";
 import { AuthService } from "./auth.service";
@@ -15,7 +16,7 @@ import { LocalAuthGuard } from "./guards/local-auth.guard";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 import { JwtRefreshGuard } from "./guards/jwt-refresh.guard";
 import { CurrentUser } from "./decorators/current-user.decorator";
-import { RegisterDto } from "./dto/register.dto";
+import { RegisterDto, SendPhoneCodeDto } from "./dto/send-phone-code.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
@@ -26,6 +27,7 @@ import { AuthGuard } from "@nestjs/passport";
 import { Response } from "express";
 import { ConfigService } from "@nestjs/config";
 import { AuthProvider } from "@prisma/client";
+import { VerifyPhoneCodeDto } from "./dto/verify-phone-code.dto";
 
 @ApiTags("auth")
 @Controller("auth")
@@ -42,6 +44,16 @@ export class AuthController {
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
+
+  @Post("phone/send-code")
+async sendPhoneCode(@Body() dto: SendPhoneCodeDto,  @Ip() ip: string,) {
+  return this.authService.sendPhoneCode(dto.phone, ip);
+}
+
+@Post("phone/verify")
+async verifyPhoneCode(@Body() dto: VerifyPhoneCodeDto) {
+  return this.authService.verifyPhoneCode(dto.phone, dto.code);
+}
 
   @UseGuards(LocalAuthGuard)
   @Post("login")

@@ -3,14 +3,17 @@ import {
   UnauthorizedException,
   ConflictException,
   BadRequestException,
+  HttpException,
+  HttpStatus,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import * as argon2 from "argon2";
 import { PrismaService } from "../common";
-import { RegisterDto } from "./dto/register.dto";
+import { RegisterDto } from "./dto/send-phone-code.dto";
 import { LoginDto } from "./dto/login.dto";
 import { AuthProvider, Prisma } from "@prisma/client";
+import { addMinutes, subMinutes } from "date-fns";
 
 const oauthUserSelect = {
   id: true,
@@ -33,17 +36,12 @@ export class AuthService {
     private configService: ConfigService
   ) {}
 
-  async validateUser(email: string, password: string): Promise<any> {
+  async validateUser(phone: string): Promise<any> {
     const user = await this.prisma.user.findUnique({
-      where: { email },
+      where: { phone },
     });
 
-    if (!user || !user.password) {
-      return null;
-    }
-
-    const isPasswordValid = await argon2.verify(user.password, password);
-    if (!isPasswordValid) {
+    if (!user) {
       return null;
     }
 
@@ -51,8 +49,13 @@ export class AuthService {
     return result;
   }
 
-  async register(registerDto: RegisterDto) {
+  async sendPhoneCode(registerDto: RegisterDto, ip:string) {
     //проверка по номеру
+    await this.checkRateLimit(registerDto.phone, registerDto.ip);
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = addMinutes(new Date(), 5);
+
     const existingPhoneUser = await this.prisma.user.findUnique({
       where: { phone: registerDto.phone },
     });
@@ -60,56 +63,68 @@ export class AuthService {
     if (existingPhoneUser) {
       throw new ConflictException("Пользователь с таким номером уже существует");
     }
-    
-    //проверка емаил
-    const existingEmailUser = await this.prisma.user.findUnique({
-      where: { email: registerDto.email },
+
+   await this.prisma.phoneCode.create({
+      data: {
+        phone: registerDto.phone,
+        code,
+        expiresAt,
+        ip: registerDto.ip ?? null,
+      },
     });
 
-    if (existingEmailUser) {
-      throw new ConflictException("Пользователь с таким email уже существует");
+    // const tokens = await this.generateTokens(user.id);
+
+    if (this.configService.get("NODE_ENV") === "development") {
+      console.log(`Код для ${registerDto.phone}: ${code}`);
     }
 
-    const hashedPassword = await argon2.hash(registerDto.password);
-
-    const user = await this.prisma.user.create({
-      data: {
-        email: registerDto.email,
-        password: hashedPassword,
-        name: registerDto.name,
-        phone: registerDto.phone,
-        provider: AuthProvider.LOCAL,
-      },
-      select: oauthUserSelect,
-    });
-
-    const tokens = await this.generateTokens(user.id);
-
-    return {
-      ...tokens,
-      user,
-    };
+    return { message: "Код отправлен" };
   }
 
-  async login(loginDto: LoginDto) {
-    const user = await this.validateUser(loginDto.phone, loginDto.password);
-    if (!user) {
-      throw new UnauthorizedException("Неверный номер или пароль");
+  async verifyPhoneCode(){
+
+  }
+
+  async checkRateLimit(phone, ip){
+    const now = new Date();
+    const windowMinutes = 10;
+    const windowStart = subMinutes(now, windowMinutes);
+
+    const MAX_PER_PHONE = 3;
+    const MAX_PER_IP = 10;
+
+    const phoneRequestsCount = await this.prisma.phoneCode.count({
+      where: {
+        phone,
+        createdAt: {
+          gte: windowStart,
+        },
+      },
+    });
+
+    if (phoneRequestsCount >= MAX_PER_PHONE) {
+      throw new HttpException(
+        `Слишком много попыток. Попробуйте позже.`, HttpStatus.TOO_MANY_REQUESTS
+      );
     }
 
-    const tokens = await this.generateTokens(user.id);
+    if (ip) {
+      const ipRequestsCount = await this.prisma.phoneCode.count({
+        where: {
+          ip,
+          createdAt: {
+            gte: windowStart,
+          },
+        },
+      });
 
-    return {
-      ...tokens,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        phone: user.phone,
-        avatar: user.avatar,
-        isPremium: user.isPremium,
-      },
-    };
+      if (ipRequestsCount >= MAX_PER_IP) {
+        throw new HttpException(
+          `Слишком много попыток с этого IP. Попробуйте позже.`, HttpStatus.TOO_MANY_REQUESTS
+        );
+      }
+    }
   }
 
   async loginWithOAuth(

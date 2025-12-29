@@ -46,11 +46,7 @@ enum Region {
 
 model User {
   id         String       @id @default(uuid())
-  email      String?      @unique
-  password   String? // null for OAuth users
-  name       String
   phone      String?       @unique
-  avatar     String?
   isPremium  Boolean      @default(false)
   role       UserRole     @default(USER)
   provider   AuthProvider @default(LOCAL)
@@ -63,7 +59,6 @@ model User {
   favorites     Favorite[]
   refreshTokens RefreshToken[]
 
-  @@index([email])
   @@index([provider, providerId])
   @@map("users")
 }
@@ -129,4 +124,18 @@ model RefreshToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("refresh_tokens")
+}
+
+model PhoneCode {
+  id        String   @id @default(uuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  used      Boolean  @default(false)
+  ip        String?   // с какого IP запросили код
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@index([expiresAt])
 }
