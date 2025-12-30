@@ -24,9 +24,7 @@ export class PropertiesService {
         user: {
           select: {
             id: true,
-            name: true,
             phone: true,
-            avatar: true,
           },
         },
       },
@@ -116,9 +114,7 @@ export class PropertiesService {
           user: {
             select: {
               id: true,
-              name: true,
               phone: true,
-              avatar: true,
             },
           },
         },
@@ -153,9 +149,7 @@ export class PropertiesService {
         user: {
           select: {
             id: true,
-            name: true,
             phone: true,
-            avatar: true,
           },
         },
       },
@@ -172,9 +166,7 @@ export class PropertiesService {
         user: {
           select: {
             id: true,
-            name: true,
             phone: true,
-            avatar: true,
           },
         },
       },
@@ -217,9 +209,7 @@ export class PropertiesService {
         user: {
           select: {
             id: true,
-            name: true,
             phone: true,
-            avatar: true,
           },
         },
       },

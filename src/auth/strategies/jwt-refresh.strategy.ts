@@ -25,10 +25,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
       where: { id: payload.sub },
       select: {
         id: true,
-        email: true,
-        name: true,
         phone: true,
-        avatar: true,
         isPremium: true,
         role: true,
       },

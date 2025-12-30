@@ -5,11 +5,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
 import { JwtStrategy } from "./strategies/jwt.strategy";
-import { LocalStrategy } from "./strategies/local.strategy";
 import { JwtRefreshStrategy } from "./strategies/jwt-refresh.strategy";
-import { GoogleStrategy } from "./strategies/google.strategy";
-import { YandexStrategy } from "./strategies/yandex.strategy";
-import { VkStrategy } from "./strategies/vk.strategy";
 import { PrismaService } from "../common";
 
 @Module({
@@ -31,11 +27,7 @@ import { PrismaService } from "../common";
     AuthService,
     JwtStrategy,
     PrismaService,
-    LocalStrategy,
     JwtRefreshStrategy,
-    GoogleStrategy,
-    YandexStrategy,
-    VkStrategy,
   ],
   exports: [AuthService],
 })

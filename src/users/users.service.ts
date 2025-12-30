@@ -15,10 +15,7 @@ export class UsersService {
       where: { id: userId },
       select: {
         id: true,
-        email: true,
-        name: true,
         phone: true,
-        avatar: true,
         isPremium: true,
         role: true,
         createdAt: true,
@@ -39,10 +36,7 @@ export class UsersService {
       data: updateUserDto,
       select: {
         id: true,
-        email: true,
-        name: true,
         phone: true,
-        avatar: true,
         isPremium: true,
         role: true,
         createdAt: true,
@@ -58,10 +52,7 @@ export class UsersService {
       where: { id },
       select: {
         id: true,
-        email: true,
-        name: true,
         phone: true,
-        avatar: true,
         isPremium: true,
         createdAt: true,
       },

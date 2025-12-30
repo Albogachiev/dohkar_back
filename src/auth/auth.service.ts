@@ -10,17 +10,14 @@ import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import * as argon2 from "argon2";
 import { PrismaService } from "../common";
-import { RegisterDto } from "./dto/send-phone-code.dto";
+import { SendPhoneCodeDto } from "./dto/send-phone-code.dto";
 import { LoginDto } from "./dto/login.dto";
 import { AuthProvider, Prisma } from "@prisma/client";
 import { addMinutes, subMinutes } from "date-fns";
 
 const oauthUserSelect = {
   id: true,
-  email: true,
-  name: true,
   phone: true,
-  avatar: true,
   isPremium: true,
 } satisfies Prisma.UserSelect;
 
@@ -36,57 +33,80 @@ export class AuthService {
     private configService: ConfigService
   ) {}
 
-  async validateUser(phone: string): Promise<any> {
-    const user = await this.prisma.user.findUnique({
-      where: { phone },
-    });
-
-    if (!user) {
-      return null;
-    }
-
-    const { password: _, ...result } = user;
-    return result;
-  }
-
-  async sendPhoneCode(registerDto: RegisterDto, ip:string) {
+  async sendPhoneCode(SendPhoneCodeDto: SendPhoneCodeDto, ip?:string) {
     //проверка по номеру
-    await this.checkRateLimit(registerDto.phone, registerDto.ip);
+    await this.checkRateLimit(SendPhoneCodeDto.phone, ip);
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = addMinutes(new Date(), 5);
 
-    const existingPhoneUser = await this.prisma.user.findUnique({
-      where: { phone: registerDto.phone },
-    });
-
-    if (existingPhoneUser) {
-      throw new ConflictException("Пользователь с таким номером уже существует");
-    }
-
    await this.prisma.phoneCode.create({
       data: {
-        phone: registerDto.phone,
+        phone: SendPhoneCodeDto.phone,
         code,
         expiresAt,
-        ip: registerDto.ip ?? null,
+        ip: ip ?? null,
       },
     });
 
-    // const tokens = await this.generateTokens(user.id);
-
     if (this.configService.get("NODE_ENV") === "development") {
-      console.log(`Код для ${registerDto.phone}: ${code}`);
+      console.log(`Код для ${SendPhoneCodeDto.phone}: ${code}`);
     }
 
     return { message: "Код отправлен" };
   }
 
-  async verifyPhoneCode(){
+  async verifyPhoneCode(phone: string, code: string){
+  const now = new Date();
 
+    const phoneCode = await this.prisma.phoneCode.findFirst({
+      where: {
+        phone,
+        code,
+        expiresAt: { gt: now },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    if (!phoneCode) {
+      throw new BadRequestException("Неверный или истекший код");
+    }
+
+    // Ищем пользователя по телефону
+    let user = await this.prisma.user.findUnique({
+      where: { phone },
+    });
+
+    // Если не нашли — регистрируем нового
+    if (!user) {
+      user = await this.prisma.user.create({
+        data: {
+          phone,
+          // сюда можно добавить дефолтные поля: role, isPremium: false и т.д.
+        },
+      });
+    }
+
+      // Код использовать можно один раз — удаляем все записи с этим кодом и телефоном
+    await this.prisma.phoneCode.deleteMany({
+      where: { phone, code },
+    });
+
+    const tokens = await this.generateTokens(user.id);
+
+    return {
+      ...tokens,
+      user: {
+        id: user.id,
+        phone: user.phone,
+        isPremium: user.isPremium,
+      },
+    };
   }
 
-  async checkRateLimit(phone, ip){
+  async checkRateLimit(phone: string, ip?: string) {
     const now = new Date();
     const windowMinutes = 10;
     const windowStart = subMinutes(now, windowMinutes);
@@ -105,7 +125,8 @@ export class AuthService {
 
     if (phoneRequestsCount >= MAX_PER_PHONE) {
       throw new HttpException(
-        `Слишком много попыток. Попробуйте позже.`, HttpStatus.TOO_MANY_REQUESTS
+        "Слишком много попыток. Попробуйте позже.",
+        HttpStatus.TOO_MANY_REQUESTS
       );
     }
 
@@ -121,76 +142,11 @@ export class AuthService {
 
       if (ipRequestsCount >= MAX_PER_IP) {
         throw new HttpException(
-          `Слишком много попыток с этого IP. Попробуйте позже.`, HttpStatus.TOO_MANY_REQUESTS
+          "Слишком много попыток с этого IP. Попробуйте позже.",
+          HttpStatus.TOO_MANY_REQUESTS
         );
       }
     }
-  }
-
-  async loginWithOAuth(
-    provider: AuthProvider,
-    providerId: string,
-    email: string,
-    name: string,
-    avatar?: string
-  ) {
-    // Не все провайдеры всегда отдают стабильный providerId,
-    // а Prisma не принимает undefined в where-условиях.
-    const where: Prisma.UserWhereInput = {
-      provider,
-      ...(providerId ? { providerId } : {}),
-    };
-
-    let user: OAuthUserPayload | null = await this.prisma.user.findFirst({
-      where,
-      select: oauthUserSelect,
-    });
-
-    if (!user) {
-      // Check if user exists with this email
-      const existingUser = await this.prisma.user.findUnique({
-        where: { email },
-        select: {
-          id: true,
-          avatar: true,
-        },
-      });
-
-      if (existingUser) {
-        // Link OAuth account to existing user
-        user = await this.prisma.user.update({
-          where: { id: existingUser.id },
-          data: {
-            provider,
-            providerId,
-            avatar: avatar || existingUser.avatar,
-          },
-          select: oauthUserSelect,
-        });
-      } else {
-        // Create new user
-        user = await this.prisma.user.create({
-          data: {
-            name,
-            avatar,
-            provider,
-            providerId,
-          },
-          select: oauthUserSelect,
-        });
-      }
-    }
-
-    if (!user) {
-      throw new UnauthorizedException("Не удалось авторизовать пользователя");
-    }
-
-    const tokens = await this.generateTokens(user.id);
-
-    return {
-      ...tokens,
-      user,
-    };
   }
 
   async refreshToken(refreshToken: string) {
@@ -240,10 +196,7 @@ export class AuthService {
       where: { id: userId },
       select: {
         id: true,
-        email: true,
-        name: true,
         phone: true,
-        avatar: true,
         isPremium: true,
         role: true,
         createdAt: true,
@@ -257,132 +210,6 @@ export class AuthService {
     return user;
   }
 
-  async forgotPassword(email: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (!user) {
-      // Don't reveal if user exists
-      return {
-        message: "Если пользователь существует, инструкции отправлены на email",
-      };
-    }
-
-    // Generate reset token
-    const resetToken = this.jwtService.sign(
-      { userId: user.id, type: "password-reset" },
-      {
-        secret: this.configService.get<string>("JWT_SECRET"),
-        expiresIn: "1h", // Reset token expires in 1 hour
-      }
-    );
-
-    // Store reset token in database (using RefreshToken model for simplicity)
-    // In production, you might want a separate PasswordResetToken model
-    await this.prisma.refreshToken.create({
-      data: {
-        token: resetToken,
-        userId: user.id,
-        expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
-      },
-    });
-
-    // TODO: Send email with reset link
-    // In development, log the token to console
-    if (this.configService.get<string>("NODE_ENV") === "development") {
-      console.log(`Password reset token for ${email}: ${resetToken}`);
-      console.log(
-        `Reset link: ${this.configService.get<string>("FRONTEND_URL")}/auth/reset-password?token=${resetToken}`
-      );
-    }
-
-    // In production, implement email sending:
-    // await this.emailService.sendPasswordResetEmail(user.email, resetToken);
-
-    return { message: "Инструкции отправлены на email" };
-  }
-
-  async resetPassword(token: string, newPassword: string) {
-    try {
-      // Verify token
-      const payload = this.jwtService.verify(token, {
-        secret: this.configService.get<string>("JWT_SECRET"),
-      });
-
-      if (payload.type !== "password-reset") {
-        throw new BadRequestException("Неверный токен сброса пароля");
-      }
-
-      // Check if token exists in database and is not expired
-      const resetTokenRecord = await this.prisma.refreshToken.findUnique({
-        where: { token },
-        include: { user: true },
-      });
-
-      if (!resetTokenRecord || resetTokenRecord.expiresAt < new Date()) {
-        throw new BadRequestException(
-          "Токен сброса пароля недействителен или истек"
-        );
-      }
-
-      // Hash new password
-      const hashedPassword = await argon2.hash(newPassword);
-
-      // Update user password
-      await this.prisma.user.update({
-        where: { id: resetTokenRecord.userId },
-        data: { password: hashedPassword },
-      });
-
-      // Delete used reset token
-      await this.prisma.refreshToken.delete({
-        where: { token },
-      });
-
-      return { message: "Пароль успешно изменен" };
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-      throw new BadRequestException(
-        "Неверный или истекший токен сброса пароля"
-      );
-    }
-  }
-
-  async changePassword(
-    userId: string,
-    currentPassword: string,
-    newPassword: string
-  ) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user || !user.password) {
-      throw new UnauthorizedException(
-        "Пользователь не найден или не имеет пароля"
-      );
-    }
-
-    // Verify current password
-    const isPasswordValid = await argon2.verify(user.password, currentPassword);
-    if (!isPasswordValid) {
-      throw new UnauthorizedException("Текущий пароль неверен");
-    }
-
-    // Hash new password
-    const hashedPassword = await argon2.hash(newPassword);
-
-    // Update password
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { password: hashedPassword },
-    });
-
-    return { message: "Пароль успешно изменен" };
-  }
 
   private async generateTokens(userId: string) {
     const payload = { sub: userId };

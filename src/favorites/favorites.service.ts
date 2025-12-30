@@ -18,9 +18,7 @@ export class FavoritesService {
             user: {
               select: {
                 id: true,
-                name: true,
                 phone: true,
-                avatar: true,
               },
             },
           },
@@ -69,9 +67,7 @@ export class FavoritesService {
             user: {
               select: {
                 id: true,
-                name: true,
                 phone: true,
-                avatar: true,
               },
             },
           },

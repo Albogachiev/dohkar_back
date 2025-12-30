@@ -5,7 +5,6 @@ import { env } from "@prisma/config";
 
 @Injectable()
 export class PrismaService extends PrismaClient {
-  phoneCode: any;
   constructor() {
     const adapter = new PrismaPg({
       connectionString: env("DATABASE_URL"),

@@ -124,10 +124,7 @@ export class AdminService {
         take: limit,
         select: {
           id: true,
-          email: true,
-          name: true,
           phone: true,
-          avatar: true,
           isPremium: true,
           role: true,
           createdAt: true,
@@ -190,8 +187,6 @@ export class AdminService {
           user: {
             select: {
               id: true,
-              email: true,
-              name: true,
             },
           },
         },
@@ -217,8 +212,6 @@ export class AdminService {
       data: { role },
       select: {
         id: true,
-        email: true,
-        name: true,
         role: true,
       },
     });
@@ -232,8 +225,6 @@ export class AdminService {
         user: {
           select: {
             id: true,
-            email: true,
-            name: true,
           },
         },
       },
