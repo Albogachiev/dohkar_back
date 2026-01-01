@@ -34,17 +34,14 @@ export class AdminController {
   @ApiOperation({ summary: "Получить список пользователей" })
   @ApiQuery({ name: "page", required: false, type: Number })
   @ApiQuery({ name: "limit", required: false, type: Number })
-  @ApiQuery({ name: "search", required: false, type: String })
   @ApiResponse({ status: 200, description: "Список пользователей" })
   async getUsers(
     @Query("page") page?: string,
     @Query("limit") limit?: string,
-    @Query("search") search?: string
   ) {
     return this.adminService.getUsers(
       page ? parseInt(page) : 1,
-      limit ? parseInt(limit) : 10,
-      search
+      limit ? parseInt(limit) : 10
     );
   }
 

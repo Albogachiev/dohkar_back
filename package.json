@@ -39,6 +39,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "date-fns": "^4.1.0",
+    "node-sms-ru": "^0.3.0",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",
@@ -47,7 +48,8 @@
     "passport-yandex": "^0.0.5",
     "pg": "^8.16.3",
     "reflect-metadata": "^0.2.1",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "sms_ru": "^0.0.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.3.0",

@@ -4,29 +4,18 @@ import {
   Get,
   Body,
   UseGuards,
-  Request,
-  Res,
   HttpCode,
   HttpStatus,
   Ip,
 } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from "@nestjs/swagger";
 import { AuthService } from "./auth.service";
-import { LocalAuthGuard } from "./guards/local-auth.guard";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 import { JwtRefreshGuard } from "./guards/jwt-refresh.guard";
 import { CurrentUser } from "./decorators/current-user.decorator";
 import { SendPhoneCodeDto } from "./dto/send-phone-code.dto";
-import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
-import { ForgotPasswordDto } from "./dto/forgot-password.dto";
-import { ResetPasswordDto } from "./dto/reset-password.dto";
-import { ChangePasswordDto } from "./dto/change-password.dto";
-import { AuthResponseDto } from "./dto/auth-response.dto";
-import { AuthGuard } from "@nestjs/passport";
-import { Response } from "express";
-import { ConfigService } from "@nestjs/config";
-import { AuthProvider } from "@prisma/client";
+import { ConfigService } from "@nestjs/config"
 import { VerifyPhoneCodeDto } from "./dto/verify-phone-code.dto";
 
 @ApiTags("auth")
@@ -37,12 +26,19 @@ export class AuthController {
     private configService: ConfigService
   ) {}
 
-  @Post("send-code")
+@Post("send-code")
+  @ApiOperation({ summary: "Отправить SMS-код на номер телефона" })
+  @ApiResponse({ status: 201, description: "Код отправлен" })
+  @ApiResponse({ status: 400, description: "Невалидный номер телефона" })
+  @ApiResponse({ status: 429, description: "Слишком много попыток" })
 async sendPhoneCode(@Body() dto: SendPhoneCodeDto,  @Ip() ip: string,) {
   return this.authService.sendPhoneCode(dto, ip);
 }
 
 @Post("phone/verify")
+  @ApiOperation({ summary: "Подтвердить код и залогиниться/зарегистрироваться" })
+  @ApiResponse({ status: 200, description: "Успешная аутентификация" })
+  @ApiResponse({ status: 400, description: "Неверный или истёкший код" })
 async verifyPhoneCode(@Body() dto: VerifyPhoneCodeDto) {
   return this.authService.verifyPhoneCode(dto.phone, dto.code);
 }
@@ -67,15 +63,13 @@ async verifyPhoneCode(@Body() dto: VerifyPhoneCodeDto) {
     return this.authService.logout(user.id);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Get("me")
-  @ApiBearerAuth()
-  @ApiOperation({ summary: "Получить текущего пользователя" })
-  @ApiResponse({ status: 200, description: "Информация о пользователе" })
-  async getMe(@CurrentUser() user: any) {
-    return this.authService.getCurrentUser(user.id);
-  }
-
-
+  // @UseGuards(JwtAuthGuard)
+  // @Get("me")
+  // @ApiBearerAuth()
+  // @ApiOperation({ summary: "Получить текущего пользователя" })
+  // @ApiResponse({ status: 200, description: "Информация о пользователе" })
+  // async getMe(@CurrentUser() user: any) {
+  //   return this.authService.getCurrentUser(user.id);
+  // }
 
 }

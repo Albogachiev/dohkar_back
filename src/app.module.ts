@@ -13,9 +13,16 @@ import { PropertiesModule } from "./properties/properties.module";
 import { FavoritesModule } from "./favorites/favorites.module";
 import { AdminModule } from "./admin/admin.module";
 import { PrismaService } from "./common";
+import { SMSRuModule } from 'node-sms-ru/nestjs'
 
 @Module({
   imports: [
+     SMSRuModule.forRootAsync({
+      useFactory: (config: ConfigService) => ({
+        api_id: config.get('SMS_RU_API_ID'),
+      }),
+      inject: [ConfigService],
+    }),
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],

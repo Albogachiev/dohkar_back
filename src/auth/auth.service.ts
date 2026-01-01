@@ -1,7 +1,6 @@
 import {
   Injectable,
   UnauthorizedException,
-  ConflictException,
   BadRequestException,
   HttpException,
   HttpStatus,
@@ -11,9 +10,9 @@ import { ConfigService } from "@nestjs/config";
 import * as argon2 from "argon2";
 import { PrismaService } from "../common";
 import { SendPhoneCodeDto } from "./dto/send-phone-code.dto";
-import { LoginDto } from "./dto/login.dto";
-import { AuthProvider, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { addMinutes, subMinutes } from "date-fns";
+import { SMSRu } from 'node-sms-ru';
 
 const oauthUserSelect = {
   id: true,
@@ -30,7 +29,8 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
-    private configService: ConfigService
+    private configService: ConfigService,
+    private readonly smsRu: SMSRu
   ) {}
 
   async sendPhoneCode(SendPhoneCodeDto: SendPhoneCodeDto, ip?:string) {
@@ -49,9 +49,9 @@ export class AuthService {
       },
     });
 
-    if (this.configService.get("NODE_ENV") === "development") {
-      console.log(`Код для ${SendPhoneCodeDto.phone}: ${code}`);
-    }
+    await this.smsRu.sendSms({ 
+      to: SendPhoneCodeDto.phone,
+      msg: code, });
 
     return { message: "Код отправлен" };
   }
@@ -191,24 +191,24 @@ export class AuthService {
     return { message: "Выход выполнен успешно" };
   }
 
-  async getCurrentUser(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        phone: true,
-        isPremium: true,
-        role: true,
-        createdAt: true,
-      },
-    });
+  // async getCurrentUser(userId: string) {
+  //   const user = await this.prisma.user.findUnique({
+  //     where: { id: userId },
+  //     select: {
+  //       id: true,
+  //       phone: true,
+  //       isPremium: true,
+  //       role: true,
+  //       createdAt: true,
+  //     },
+  //   });
 
-    if (!user) {
-      throw new UnauthorizedException("Пользователь не найден");
-    }
+  //   if (!user) {
+  //     throw new UnauthorizedException("Пользователь не найден");
+  //   }
 
-    return user;
-  }
+  //   return user;
+  // }
 
 
   private async generateTokens(userId: string) {

@@ -1,12 +1,13 @@
-import { IsEmail, IsNotEmpty, IsPhoneNumber, IsString } from "class-validator";
+import { IsNotEmpty, IsPhoneNumber, IsString } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class SendPhoneCodeDto {
-
-
-  @ApiPropertyOptional({ example: "+7 (928) 000-00-00" })
-  @IsString()
+  @ApiProperty({
+    example: "+79626404047",
+    description: "Номер телефона в формате E.164",
+  })
   @IsPhoneNumber('RU')
+  @IsString()
   @IsNotEmpty()
   phone: string;
 }

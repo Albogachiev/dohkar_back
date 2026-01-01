@@ -366,13 +366,9 @@ async function main() {
 
   await prisma.user.create({
     data: {
-      email: "admin@dohkar.ru",
-      password: await hashPass("admin2025"),
-      name: "Админ Dohkar",
       phone: "+79998887766",
       role: UserRole.ADMIN,
       isPremium: true,
-      avatar: getRandomAvatar(0),
       provider: AuthProvider.LOCAL,
     },
   });
@@ -380,59 +376,35 @@ async function main() {
   await prisma.user.createMany({
     data: [
       {
-        email: "ahmed95@mail.ru",
-        password: await hashPass("ahmed123"),
-        name: "Ахмед",
         phone: "+79451234567",
         isPremium: true,
         role: UserRole.PREMIUM,
         provider: AuthProvider.LOCAL,
-        avatar: getRandomAvatar(1),
       },
       {
-        email: "zara.ing@yandex.ru",
-        password: await hashPass("zara2025"),
-        name: "Зара",
         phone: "+79381230001",
         isPremium: true,
         provider: AuthProvider.LOCAL,
-        avatar: getRandomAvatar(2),
       },
       {
-        email: "magomed95@mail.ru",
-        password: await hashPass("magomed"),
-        name: "Магомед",
         phone: "+79280009988",
         role: UserRole.USER,
         provider: AuthProvider.LOCAL,
-        avatar: getRandomAvatar(3),
       },
       {
-        email: "amina.khasan@gmail.com",
-        password: await hashPass("amina123"),
-        name: "Амина",
         phone: "+79408887766",
         isPremium: true,
         provider: AuthProvider.LOCAL,
-        avatar: getRandomAvatar(4),
       },
       {
-        email: "ruslan95@yandex.ru",
-        password: await hashPass("ruslan2025"),
-        name: "Руслан",
         phone: "+79381112233",
         role: UserRole.USER,
         provider: AuthProvider.LOCAL,
-        avatar: getRandomAvatar(5),
       },
       {
-        email: "ibrahim94@mail.ru",
-        password: await hashPass("ibrahim"),
-        name: "Ибрагим",
         phone: "+79451112233",
         isPremium: true,
         provider: AuthProvider.LOCAL,
-        avatar: getRandomAvatar(6),
       },
     ],
     skipDuplicates: true,

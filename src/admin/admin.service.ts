@@ -2,6 +2,12 @@ import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../common/prisma.service";
 import { PropertyStatus, PropertyType, UserRole } from "@prisma/client";
 
+// общее количество пользователей в таблице User
+// общее количество объявлений / объектов недвижимости в таблице Property
+// объекты со статусом ACTIVE
+// Считает количество пользователей, у которых: isPremium: true
+
+
 @Injectable()
 export class AdminService {
   constructor(private prisma: PrismaService) {}
@@ -106,20 +112,10 @@ export class AdminService {
     };
   }
 
-  async getUsers(page: number = 1, limit: number = 10, search?: string) {
+  async getUsers(page: number = 1, limit: number = 10) {
     const skip = (page - 1) * limit;
-    const where = search
-      ? {
-          OR: [
-            { email: { contains: search, mode: "insensitive" as const } },
-            { name: { contains: search, mode: "insensitive" as const } },
-          ],
-        }
-      : {};
 
-    const [users, total] = await Promise.all([
-      this.prisma.user.findMany({
-        where,
+    const users = await this.prisma.user.findMany({
         skip,
         take: limit,
         select: {
@@ -137,19 +133,15 @@ export class AdminService {
         orderBy: {
           createdAt: "desc",
         },
-      }),
-      this.prisma.user.count({ where }),
-    ]);
+      })
 
     return {
       data: users.map((user) => ({
         ...user,
         propertiesCount: user._count.properties,
       })),
-      total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
     };
   }
 
