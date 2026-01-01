@@ -15,16 +15,18 @@ import { JwtRefreshGuard } from "./guards/jwt-refresh.guard";
 import { CurrentUser } from "./decorators/current-user.decorator";
 import { SendPhoneCodeDto } from "./dto/send-phone-code.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
-import { ConfigService } from "@nestjs/config"
 import { VerifyPhoneCodeDto } from "./dto/verify-phone-code.dto";
+import { RegisterPhonePasswordDto } from "./dto/register-phone-password.dto";
+import { LocalAuthGuard } from "./guards/local-auth.guard";
+import { GoogleAuthGuard } from "./guards/google-auth.guard";
+import { YandexAuthGuard } from "./guards/yandex-auth.guard";
+import { LoginPhonePasswordDto } from "./dto/login-phone-password.dto";
+import { AuthUserPayload } from "./types";
 
 @ApiTags("auth")
 @Controller("auth")
 export class AuthController {
-  constructor(
-    private authService: AuthService,
-    private configService: ConfigService
-  ) {}
+  constructor(private authService: AuthService) {}
 
 @Post("send-code")
   @ApiOperation({ summary: "Отправить SMS-код на номер телефона" })
@@ -42,6 +44,53 @@ async sendPhoneCode(@Body() dto: SendPhoneCodeDto,  @Ip() ip: string,) {
 async verifyPhoneCode(@Body() dto: VerifyPhoneCodeDto) {
   return this.authService.verifyPhoneCode(dto.phone, dto.code);
 }
+
+  @Post("register/phone-password")
+  @ApiOperation({ summary: "Регистрация по номеру телефона и паролю" })
+  @ApiResponse({ status: 201, description: "Пользователь зарегистрирован" })
+  async registerWithPhoneAndPassword(@Body() dto: RegisterPhonePasswordDto) {
+    return this.authService.registerWithPhoneAndPassword(dto);
+  }
+
+  @UseGuards(LocalAuthGuard)
+  @Post("login/phone-password")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Вход по номеру телефона и паролю" })
+  @ApiResponse({ status: 200, description: "Успешная аутентификация" })
+  async loginWithPhoneAndPassword(
+    @CurrentUser() user: AuthUserPayload,
+    @Body() _dto: LoginPhonePasswordDto
+  ) {
+    return this.authService.loginWithPhoneAndPassword(user);
+  }
+
+  @Get("google")
+  @UseGuards(GoogleAuthGuard)
+  @ApiOperation({ summary: "Google OAuth" })
+  async googleAuth() {
+    return;
+  }
+
+  @Get("google/callback")
+  @UseGuards(GoogleAuthGuard)
+  @ApiOperation({ summary: "Google OAuth callback" })
+  async googleCallback(@CurrentUser() user: AuthUserPayload) {
+    return this.authService.loginFromOAuth(user);
+  }
+
+  @Get("yandex")
+  @UseGuards(YandexAuthGuard)
+  @ApiOperation({ summary: "Yandex OAuth" })
+  async yandexAuth() {
+    return;
+  }
+
+  @Get("yandex/callback")
+  @UseGuards(YandexAuthGuard)
+  @ApiOperation({ summary: "Yandex OAuth callback" })
+  async yandexCallback(@CurrentUser() user: AuthUserPayload) {
+    return this.authService.loginFromOAuth(user);
+  }
 
   @UseGuards(JwtRefreshGuard)
   @Post("refresh")

@@ -16,6 +16,7 @@ export class UsersService {
       select: {
         id: true,
         phone: true,
+        email: true,
         isPremium: true,
         role: true,
         createdAt: true,
@@ -37,6 +38,7 @@ export class UsersService {
       select: {
         id: true,
         phone: true,
+        email: true,
         isPremium: true,
         role: true,
         createdAt: true,
@@ -53,6 +55,7 @@ export class UsersService {
       select: {
         id: true,
         phone: true,
+        email: true,
         isPremium: true,
         createdAt: true,
       },

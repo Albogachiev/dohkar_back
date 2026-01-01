@@ -47,6 +47,8 @@ enum Region {
 model User {
   id         String       @id @default(uuid())
   phone      String?       @unique
+  email      String?       @unique
+  passwordHash String?
   isPremium  Boolean      @default(false)
   role       UserRole     @default(USER)
   provider   AuthProvider @default(LOCAL)
