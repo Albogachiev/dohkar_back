@@ -10,19 +10,11 @@ import { ConfigService } from "@nestjs/config";
 import * as argon2 from "argon2";
 import { PrismaService } from "../common";
 import { SendPhoneCodeDto } from "./dto/send-phone-code.dto";
-import { Prisma } from "@prisma/client";
+import { AuthProvider } from "@prisma/client";
 import { addMinutes, subMinutes } from "date-fns";
 import { SMSRu } from 'node-sms-ru';
-
-const oauthUserSelect = {
-  id: true,
-  phone: true,
-  isPremium: true,
-} satisfies Prisma.UserSelect;
-
-type OAuthUserPayload = Prisma.UserGetPayload<{
-  select: typeof oauthUserSelect;
-}>;
+import { RegisterPhonePasswordDto } from "./dto/register-phone-password.dto";
+import { AuthUserPayload, authUserSelect } from "./types";
 
 @Injectable()
 export class AuthService {
@@ -33,16 +25,15 @@ export class AuthService {
     private readonly smsRu: SMSRu
   ) {}
 
-  async sendPhoneCode(SendPhoneCodeDto: SendPhoneCodeDto, ip?:string) {
-    //проверка по номеру
-    await this.checkRateLimit(SendPhoneCodeDto.phone, ip);
+  async sendPhoneCode(sendPhoneCodeDto: SendPhoneCodeDto, ip?: string) {
+    await this.checkRateLimit(sendPhoneCodeDto.phone, ip);
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = addMinutes(new Date(), 5);
 
-   await this.prisma.phoneCode.create({
+    await this.prisma.phoneCode.create({
       data: {
-        phone: SendPhoneCodeDto.phone,
+        phone: sendPhoneCodeDto.phone,
         code,
         expiresAt,
         ip: ip ?? null,
@@ -50,7 +41,7 @@ export class AuthService {
     });
 
     await this.smsRu.sendSms({ 
-      to: SendPhoneCodeDto.phone,
+      to: sendPhoneCodeDto.phone,
       msg: code, });
 
     return { message: "Код отправлен" };
@@ -84,7 +75,7 @@ export class AuthService {
       user = await this.prisma.user.create({
         data: {
           phone,
-          // сюда можно добавить дефолтные поля: role, isPremium: false и т.д.
+          provider: AuthProvider.LOCAL,
         },
       });
     }
@@ -94,16 +85,7 @@ export class AuthService {
       where: { phone, code },
     });
 
-    const tokens = await this.generateTokens(user.id);
-
-    return {
-      ...tokens,
-      user: {
-        id: user.id,
-        phone: user.phone,
-        isPremium: user.isPremium,
-      },
-    };
+    return this.buildAuthResponse(user.id);
   }
 
   async checkRateLimit(phone: string, ip?: string) {
@@ -210,6 +192,96 @@ export class AuthService {
   //   return user;
   // }
 
+  async registerWithPhoneAndPassword(dto: RegisterPhonePasswordDto) {
+    const existingUser = await this.prisma.user.findUnique({
+      where: { phone: dto.phone },
+      select: { id: true },
+    });
+
+    if (existingUser) {
+      throw new BadRequestException("Пользователь с таким номером уже существует");
+    }
+
+    const passwordHash = await argon2.hash(dto.password);
+
+    const user = await this.prisma.user.create({
+      data: {
+        phone: dto.phone,
+        passwordHash,
+        provider: AuthProvider.LOCAL,
+      },
+      select: authUserSelect,
+    });
+
+    return this.buildAuthResponse(user.id);
+  }
+
+  async validateLocalUser(phone: string, password: string): Promise<AuthUserPayload> {
+    const user = await this.prisma.user.findUnique({
+      where: { phone },
+    });
+
+    if (!user || !user.passwordHash) {
+      throw new UnauthorizedException("Неверный телефон или пароль");
+    }
+
+    const isPasswordValid = await argon2.verify(user.passwordHash, password);
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException("Неверный телефон или пароль");
+    }
+
+    return this.getUserPayload(user.id);
+  }
+
+  async loginWithPhoneAndPassword(user: AuthUserPayload) {
+    return this.buildAuthResponse(user.id);
+  }
+
+  async handleOAuthLogin(
+    provider: AuthProvider,
+    profile: { providerId: string; email?: string }
+  ): Promise<AuthUserPayload> {
+    const userFromProvider = await this.prisma.user.findFirst({
+      where: { provider, providerId: profile.providerId },
+      select: authUserSelect,
+    });
+
+    if (userFromProvider) {
+      return userFromProvider;
+    }
+
+    if (profile.email) {
+      const userByEmail = await this.prisma.user.findUnique({
+        where: { email: profile.email },
+        select: authUserSelect,
+      });
+
+      if (userByEmail) {
+        return this.prisma.user.update({
+          where: { id: userByEmail.id },
+          data: {
+            provider,
+            providerId: profile.providerId,
+          },
+          select: authUserSelect,
+        });
+      }
+    }
+
+    return this.prisma.user.create({
+      data: {
+        email: profile.email,
+        provider,
+        providerId: profile.providerId,
+      },
+      select: authUserSelect,
+    });
+  }
+
+  async loginFromOAuth(user: AuthUserPayload) {
+    return this.buildAuthResponse(user.id);
+  }
 
   private async generateTokens(userId: string) {
     const payload = { sub: userId };
@@ -248,5 +320,30 @@ export class AuthService {
       accessToken,
       refreshToken,
     };
+  }
+
+  private async buildAuthResponse(userId: string) {
+    const [tokens, user] = await Promise.all([
+      this.generateTokens(userId),
+      this.getUserPayload(userId),
+    ]);
+
+    return {
+      ...tokens,
+      user,
+    };
+  }
+
+  private async getUserPayload(userId: string): Promise<AuthUserPayload> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: authUserSelect,
+    });
+
+    if (!user) {
+      throw new UnauthorizedException("Пользователь не найден");
+    }
+
+    return user;
   }
 }

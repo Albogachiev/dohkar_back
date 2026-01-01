@@ -26,8 +26,10 @@ export class JwtRefreshStrategy extends PassportStrategy(
       select: {
         id: true,
         phone: true,
+        email: true,
         isPremium: true,
         role: true,
+        provider: true,
       },
     });
 

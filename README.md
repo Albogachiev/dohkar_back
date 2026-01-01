@@ -85,13 +85,16 @@ server/
 ## API Endpoints
 
 ### Авторизация (`/api/auth`)
-- `POST /api/auth/register` - Регистрация
-- `POST /api/auth/login` - Вход
+- `POST /api/auth/send-code` - Отправка SMS-кода для входа по номеру
+- `POST /api/auth/phone/verify` - Вход/регистрация по SMS-коду
+- `POST /api/auth/register/phone-password` - Регистрация по номеру и паролю
+- `POST /api/auth/login/phone-password` - Вход по номеру и паролю
 - `POST /api/auth/refresh` - Обновление токена
 - `POST /api/auth/logout` - Выход
-- `GET /api/auth/me` - Текущий пользователь
 - `GET /api/auth/google` - Google OAuth
+- `GET /api/auth/google/callback` - Callback для Google OAuth
 - `GET /api/auth/yandex` - Yandex OAuth
+- `GET /api/auth/yandex/callback` - Callback для Yandex OAuth
 - `GET /api/auth/vk` - VK OAuth
 - `POST /api/auth/forgot-password` - Восстановление пароля
 
