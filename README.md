@@ -1,5 +1,6 @@
 # Dohkar Backend API
-
+<!-- при тестировании гугл авторизации в деве, установить заголовок 
+Referrer-Policy strict-origin-when-cross-origin -->
 Backend API для платформы недвижимости Dohkar, построенный на NestJS, PostgreSQL и Prisma.
 
 ## Технологии

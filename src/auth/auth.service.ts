@@ -173,24 +173,24 @@ export class AuthService {
     return { message: "Выход выполнен успешно" };
   }
 
-  // async getCurrentUser(userId: string) {
-  //   const user = await this.prisma.user.findUnique({
-  //     where: { id: userId },
-  //     select: {
-  //       id: true,
-  //       phone: true,
-  //       isPremium: true,
-  //       role: true,
-  //       createdAt: true,
-  //     },
-  //   });
+  async getCurrentUser(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        phone: true,
+        isPremium: true,
+        role: true,
+        createdAt: true,
+      },
+    });
 
-  //   if (!user) {
-  //     throw new UnauthorizedException("Пользователь не найден");
-  //   }
+    if (!user) {
+      throw new UnauthorizedException("Пользователь не найден");
+    }
 
-  //   return user;
-  // }
+    return user;
+  }
 
   async registerWithPhoneAndPassword(dto: RegisterPhonePasswordDto) {
     const existingUser = await this.prisma.user.findUnique({

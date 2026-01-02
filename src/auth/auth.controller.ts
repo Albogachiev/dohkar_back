@@ -112,13 +112,13 @@ async verifyPhoneCode(@Body() dto: VerifyPhoneCodeDto) {
     return this.authService.logout(user.id);
   }
 
-  // @UseGuards(JwtAuthGuard)
-  // @Get("me")
-  // @ApiBearerAuth()
-  // @ApiOperation({ summary: "Получить текущего пользователя" })
-  // @ApiResponse({ status: 200, description: "Информация о пользователе" })
-  // async getMe(@CurrentUser() user: any) {
-  //   return this.authService.getCurrentUser(user.id);
-  // }
+  @UseGuards(JwtAuthGuard)
+  @Get("me")
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Получить текущего пользователя" })
+  @ApiResponse({ status: 200, description: "Информация о пользователе" })
+  async getMe(@CurrentUser() user: any) {
+    return this.authService.getCurrentUser(user.id);
+  }
 
 }
