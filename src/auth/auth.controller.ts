@@ -7,6 +7,7 @@ import {
   HttpCode,
   HttpStatus,
   Ip,
+  Res,
 } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from "@nestjs/swagger";
 import { AuthService } from "./auth.service";
@@ -22,11 +23,33 @@ import { GoogleAuthGuard } from "./guards/google-auth.guard";
 import { YandexAuthGuard } from "./guards/yandex-auth.guard";
 import { LoginPhonePasswordDto } from "./dto/login-phone-password.dto";
 import { AuthUserPayload } from "./types";
+import { ConfigService } from "@nestjs/config";
+import { Response } from "express";
 
 @ApiTags("auth")
 @Controller("auth")
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService,
+              private readonly configService: ConfigService,
+  ) {}
+
+  private setAuthCookies(res: Response, tokens: { accessToken: string; refreshToken: string }) {
+    const isProd = this.configService.get('NODE_ENV') === 'production';
+
+    res.cookie('accessToken', tokens.accessToken, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'lax',
+      maxAge: 1000 * 60 * 15,
+    });
+
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'lax',
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+    });
+  }
 
 @Post("send-code")
   @ApiOperation({ summary: "Отправить SMS-код на номер телефона" })
@@ -74,8 +97,11 @@ async verifyPhoneCode(@Body() dto: VerifyPhoneCodeDto) {
   @Get("google/callback")
   @UseGuards(GoogleAuthGuard)
   @ApiOperation({ summary: "Google OAuth callback" })
-  async googleCallback(@CurrentUser() user: AuthUserPayload) {
-    return this.authService.loginFromOAuth(user);
+  async googleCallback(@CurrentUser() user: AuthUserPayload,
+                       @Res({ passthrough: true }) res: Response,) {
+    const auth = await this.authService.loginFromOAuth(user);
+    this.setAuthCookies(res, auth);
+    return auth;
   }
 
   @Get("yandex")

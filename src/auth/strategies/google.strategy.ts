@@ -29,19 +29,17 @@ export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
   }
 
   async validate(
-    accessToken: string,
-    refreshToken: string,
-    profile: Profile,
-    done: VerifyCallback
-  ): Promise<void> {
-    try {
-      const user = await this.authService.handleOAuthLogin(AuthProvider.GOOGLE, {
-        providerId: profile.id,
-        email: profile.emails?.[0]?.value,
-      });
-      done(null, user as AuthUserPayload);
-    } catch (error) {
-      done(error, false);
-    }
-  }
+  accessToken: string,
+  refreshToken: string,
+  profile: Profile,
+): Promise<AuthUserPayload> {
+  return this.authService.handleOAuthLogin(AuthProvider.GOOGLE, {
+    providerId: profile.id,
+    email: profile.emails?.[0]?.value,
+  });
 }
+}
+// phone 
+// avatar
+// name
+// httponly cook
