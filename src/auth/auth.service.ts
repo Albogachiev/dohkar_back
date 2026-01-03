@@ -327,6 +327,7 @@ export class AuthService {
       this.generateTokens(userId),
       this.getUserPayload(userId),
     ]);
+    
 
     return {
       ...tokens,
